@@ -1,5 +1,7 @@
-from ..utils.color_utils import *
 from collections import OrderedDict
+
+from material_color_utilities_python.utils.color_utils import alpha_from_argb
+
 
 # /**
 #  * Quantizes an image into a map, with keys of ARGB colors, and values of the
@@ -18,11 +20,11 @@ class QuantizerMap:
     #  */
     @staticmethod
     def quantize(pixels):
-        countByColor = OrderedDict()
+        count_by_color = OrderedDict()
         for i in range(len(pixels)):
             pixel = pixels[i]
-            alpha = alphaFromArgb(pixel)
-            if (alpha < 255):
+            alpha = alpha_from_argb(pixel)
+            if alpha < 255:
                 continue
-            countByColor[pixel] = (countByColor[pixel] if pixel in countByColor.keys() else 0) + 1
-        return countByColor
+            count_by_color[pixel] = (count_by_color[pixel] if pixel in count_by_color.keys() else 0) + 1
+        return count_by_color

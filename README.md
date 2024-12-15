@@ -24,7 +24,7 @@ Theme from color:
 ``` python
 from material_color_utilities_python import *
 
-theme = themeFromSourceColor(argbFromHex('#4285f4'))
+theme = theme_from_source_color(argb_from_hex('#4285f4'))
 
 print(theme)
 ```
@@ -35,9 +35,9 @@ Color from image:
 from material_color_utilities_python import *
 
 img = Image.open('path/to/image.png')
-argb = sourceColorFromImage(img)
+argb = source_color_from_image(img)
 
-print(hexFromArgb(argb))
+print(hex_from_argb(argb))
 ```
 
 Theme from image:
@@ -50,7 +50,7 @@ basewidth = 64
 wpercent = (basewidth/float(img.size[0]))
 hsize = int((float(img.size[1])*float(wpercent)))
 img = img.resize((basewidth,hsize),Image.Resampling.LANCZOS)
-print(themeFromImage(img))
+print(theme_from_image(img))
 
 print(theme)
 ```

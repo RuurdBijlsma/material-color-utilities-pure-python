@@ -1,16 +1,26 @@
-[tool.poetry]
+[project]
 name = "material-color-utilities-python"
-version = "0.1.3"
+version = "0.1.4"
 description = "Python port of material-color-utilities used for Material You colors"
-authors = ["Avanish Subbiah <avanishsubbiah1@gmail.com>", "0xMRTT", "David Lapshin"]
+authors = [
+    "Avanish Subbiah <avanishsubbiah1@gmail.com>",
+    "0xMRTT",
+    "David Lapshin",
+    "Ruurd Bijlsma <ruurd@bijlsma.dev>"
+]
 license = "Apache 2.0"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pillow>=11.0.0",
+    "pydantic>=2.10.3",
+    "regex>=2024.11.6",
+    "windows-curses>=2.4.0; sys_platform == 'win32'",
+]
 
-[tool.poetry.dependencies]
-Pillow = "^9.2.0"
-regex = "*"
-
-[tool.poetry.dev-dependencies]
-
-[build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+[dependency-groups]
+dev = [
+    "pyinstrument>=5.0.0",
+    "pytest>=8.3.4",
+    "ruff>=0.8.3",
+]

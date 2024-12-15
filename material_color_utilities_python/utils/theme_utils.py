@@ -1,9 +1,3 @@
-from ..blend.blend import *
-from ..palettes.core_palette import *
-from ..scheme.scheme import *
-from .image_utils import *
-from .string_utils import *
-
 # /**
 #  * Generate custom color group from source and target color
 #  *
@@ -14,11 +8,18 @@ from .string_utils import *
 #  * @link https://m3.material.io/styles/color/the-color-system/color-roles
 #  */
 # NOTE: Changes made to output format to be Dictionary
-def customColor(source, color):
+from material_color_utilities_python.blend.blend import Blend
+from material_color_utilities_python.palettes.core_palette import CorePalette
+from material_color_utilities_python.scheme.scheme import Scheme
+from material_color_utilities_python.types.theme_type import Theme
+from material_color_utilities_python.utils.image_utils import source_color_from_image
+
+
+def custom_color(source, color):
     value = color["value"]
     from_v = value
     to = source
-    if (color["blend"]):
+    if color["blend"]:
         value = Blend.harmonize(from_v, to)
     palette = CorePalette.of(value)
     tones = palette.a1
@@ -27,29 +28,30 @@ def customColor(source, color):
         "value": value,
         "light": {
             "color": tones.tone(40),
-            "onColor": tones.tone(100),
-            "colorContainer": tones.tone(90),
-            "onColorContainer": tones.tone(10),
+            "on_color": tones.tone(100),
+            "color_container": tones.tone(90),
+            "on_color_container": tones.tone(10),
         },
         "dark": {
             "color": tones.tone(80),
-            "onColor": tones.tone(20),
-            "colorContainer": tones.tone(30),
-            "onColorContainer": tones.tone(90),
+            "on_color": tones.tone(20),
+            "color_container": tones.tone(30),
+            "on_color_container": tones.tone(90),
         },
     }
+
 
 # /**
 #  * Generate a theme from a source color
 #  *
 #  * @param source Source color
-#  * @param customColors Array of custom colors
+#  * @param custom_colors Array of custom colors
 #  * @return Theme object
 #  */
 # NOTE: Changes made to output format to be Dictionary
-def themeFromSourceColor(source, customColors = []):
+def theme_from_source_color(source, custom_colors=[]) -> Theme:
     palette = CorePalette.of(source)
-    return {
+    return Theme.model_validate({
         "source": source,
         "schemes": {
             "light": Scheme.light(source),
@@ -60,22 +62,23 @@ def themeFromSourceColor(source, customColors = []):
             "secondary": palette.a2,
             "tertiary": palette.a3,
             "neutral": palette.n1,
-            "neutralVariant": palette.n2,
+            "neutral_variant": palette.n2,
             "error": palette.error,
         },
-        "customColors": [customColor(source, c) for c in customColors]
-    }
+        "custom_colors": [custom_color(source, c) for c in custom_colors],
+    })
+
 
 # /**
 #  * Generate a theme from an image source
 #  *
 #  * @param image Image element
-#  * @param customColors Array of custom colors
+#  * @param custom_colors Array of custom colors
 #  * @return Theme object
 #  */
-def themeFromImage(image, customColors = []):
-    source = sourceColorFromImage(image)
-    return themeFromSourceColor(source, customColors)
+def theme_from_image(image, custom_colors=[]):
+    source = source_color_from_image(image)
+    return theme_from_source_color(source, custom_colors)
 
 
 # Not really applicable to python CLI
@@ -92,7 +95,7 @@ def themeFromImage(image, customColors = []):
 #     const scheme = isDark ? theme.schemes.dark : theme.schemes.light;
 #     for (const [key, value] of Object.entries(scheme.toJSON())) {
 #         const token = key.replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase();
-#         const color = hexFromArgb(value);
+#         const color = hex_from_argb(value);
 #         target.style.setProperty(`--md-sys-color-${token}`, color);
 #     }
 # }

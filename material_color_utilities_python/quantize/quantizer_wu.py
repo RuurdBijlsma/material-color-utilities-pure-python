@@ -1,5 +1,9 @@
-from ..utils.color_utils import *
-from ..quantize.quantizer_map import *
+from material_color_utilities_python.quantize.quantizer_map import QuantizerMap
+from material_color_utilities_python.utils.color_utils import (
+    blue_from_argb,
+    green_from_argb,
+    red_from_argb,
+)
 
 INDEX_BITS = 5
 SIDE_LENGTH = 33 # ((1 << INDEX_INDEX_BITS) + 1)
@@ -19,11 +23,11 @@ directions = {
 #  * 1991.
 #  */
 class QuantizerWu:
-    def __init__(self, weights = [], momentsR = [], momentsG = [], momentsB = [], moments = [], cubes = []):
+    def __init__(self, weights = [], moments_r = [], moments_g = [], moments_b = [], moments = [], cubes = []):
         self.weights = weights
-        self.momentsR = momentsR
-        self.momentsG = momentsG
-        self.momentsB = momentsB
+        self.moments_r = moments_r
+        self.moments_g = moments_g
+        self.moments_b = moments_b
         self.moments = moments
         self.cubes = cubes
 
@@ -33,136 +37,135 @@ class QuantizerWu:
     #  *     number of colors may be returned.
     #  * @return Colors in ARGB format.
     #  */
-    def quantize(self, pixels, maxColors):
-        self.constructHistogram(pixels)
-        self.computeMoments()
-        createBoxesResult = self.createBoxes(maxColors)
-        results = self.createResult(createBoxesResult.resultCount)
+    def quantize(self, pixels, max_colors):
+        self.construct_histogram(pixels)
+        self.compute_moments()
+        create_boxes_result = self.create_boxes(max_colors)
+        results = self.create_result(create_boxes_result.result_count)
         return results
 
-    def constructHistogram(self, pixels):
+    def construct_histogram(self, pixels):
         _a = None
         self.weights = [0] * TOTAL_SIZE
-        self.momentsR = [0] * TOTAL_SIZE
-        self.momentsG = [0] * TOTAL_SIZE
-        self.momentsB = [0] * TOTAL_SIZE
+        self.moments_r = [0] * TOTAL_SIZE
+        self.moments_g = [0] * TOTAL_SIZE
+        self.moments_b = [0] * TOTAL_SIZE
         self.moments = [0] * TOTAL_SIZE
-        countByColor = QuantizerMap.quantize(pixels)
-        for (pixel, count) in countByColor.items():
-            red = redFromArgb(pixel)
-            green = greenFromArgb(pixel)
-            blue = blueFromArgb(pixel)
-            bitsToRemove = 8 - INDEX_BITS
-            iR = (red >> bitsToRemove) + 1
-            iG = (green >> bitsToRemove) + 1
-            iB = (blue >> bitsToRemove) + 1
-            index = self.getIndex(iR, iG, iB)
+        count_by_color = QuantizerMap.quantize(pixels)
+        for (pixel, count) in count_by_color.items():
+            red = red_from_argb(pixel)
+            green = green_from_argb(pixel)
+            blue = blue_from_argb(pixel)
+            bits_to_remove = 8 - INDEX_BITS
+            i_r = (red >> bits_to_remove) + 1
+            i_g = (green >> bits_to_remove) + 1
+            i_b = (blue >> bits_to_remove) + 1
+            index = self.get_index(i_r, i_g, i_b)
             self.weights[index] = (self.weights[index] if len(self.weights) > index else 0) + count
-            self.momentsR[index] += count * red
-            self.momentsG[index] += count * green
-            self.momentsB[index] += count * blue
+            self.moments_r[index] += count * red
+            self.moments_g[index] += count * green
+            self.moments_b[index] += count * blue
             self.moments[index] += count * (red * red + green * green + blue * blue)
 
-    def computeMoments(self):
+    def compute_moments(self):
         for r in range(1, SIDE_LENGTH):
             area = [0] * SIDE_LENGTH
-            areaR = [0] * SIDE_LENGTH
-            areaG = [0] * SIDE_LENGTH
-            areaB = [0] * SIDE_LENGTH
+            area_r = [0] * SIDE_LENGTH
+            area_g = [0] * SIDE_LENGTH
+            area_b = [0] * SIDE_LENGTH
             area2 = [0.0] * SIDE_LENGTH
             for g in range(1, SIDE_LENGTH):
                 line = 0
-                lineR = 0
-                lineG = 0
-                lineB = 0
+                line_r = 0
+                line_g = 0
+                line_b = 0
                 line2 = 0.0
                 for b in range(1, SIDE_LENGTH):
-                    index = self.getIndex(r, g, b)
+                    index = self.get_index(r, g, b)
                     line += self.weights[index]
-                    lineR += self.momentsR[index]
-                    lineG += self.momentsG[index]
-                    lineB += self.momentsB[index]
+                    line_r += self.moments_r[index]
+                    line_g += self.moments_g[index]
+                    line_b += self.moments_b[index]
                     line2 += self.moments[index]
                     area[b] += line
-                    areaR[b] += lineR
-                    areaG[b] += lineG
-                    areaB[b] += lineB
+                    area_r[b] += line_r
+                    area_g[b] += line_g
+                    area_b[b] += line_b
                     area2[b] += line2
-                    previousIndex = self.getIndex(r - 1, g, b)
-                    self.weights[index] = self.weights[previousIndex] + area[b]
-                    self.momentsR[index] = self.momentsR[previousIndex] + areaR[b]
-                    self.momentsG[index] = self.momentsG[previousIndex] + areaG[b]
-                    self.momentsB[index] = self.momentsB[previousIndex] + areaB[b]
-                    self.moments[index] = self.moments[previousIndex] + area2[b]
+                    previous_index = self.get_index(r - 1, g, b)
+                    self.weights[index] = self.weights[previous_index] + area[b]
+                    self.moments_r[index] = self.moments_r[previous_index] + area_r[b]
+                    self.moments_g[index] = self.moments_g[previous_index] + area_g[b]
+                    self.moments_b[index] = self.moments_b[previous_index] + area_b[b]
+                    self.moments[index] = self.moments[previous_index] + area2[b]
 
-    def createBoxes(self, maxColors):
-        self.cubes = [Box() for x in [0] * maxColors]
-        volumeVariance = [0.0] * maxColors
+    def create_boxes(self, max_colors):
+        self.cubes = [Box() for _ in [0] * max_colors]
+        volume_variance = [0.0] * max_colors
         self.cubes[0].r0 = 0
         self.cubes[0].g0 = 0
         self.cubes[0].b0 = 0
         self.cubes[0].r1 = SIDE_LENGTH - 1
         self.cubes[0].g1 = SIDE_LENGTH - 1
         self.cubes[0].b1 = SIDE_LENGTH - 1
-        generatedColorCount = maxColors
-        next = 0
-        for i in range(1, maxColors):
-            if (self.cut(self.cubes[next], self.cubes[i])):
-                volumeVariance[next] = self.variance(self.cubes[next]) if self.cubes[next].vol > 1 else 0.0
-                volumeVariance[i] = self.variance(self.cubes[i]) if self.cubes[i].vol > 1 else 0.0
+        generated_color_count = max_colors
+        next_index = 0
+        for i in range(1, max_colors):
+            if self.cut(self.cubes[next_index], self.cubes[i]):
+                volume_variance[next_index] = self.variance(self.cubes[next_index]) if self.cubes[next_index].vol > 1 else 0.0
+                volume_variance[i] = self.variance(self.cubes[i]) if self.cubes[i].vol > 1 else 0.0
             else:
-                volumeVariance[next] = 0.0
+                volume_variance[next_index] = 0.0
                 i -= 1
-            next = 0
-            temp = volumeVariance[0]
+            next_index = 0
+            temp = volume_variance[0]
             for j in range(1, i):
-                if (volumeVariance[j] > temp):
-                    temp = volumeVariance[j]
-                    next = j
-            if (temp <= 0.0):
-                generatedColorCount = i + 1
+                if volume_variance[j] > temp:
+                    temp = volume_variance[j]
+                    next_index = j
+            if temp <= 0.0:
+                generated_color_count = i + 1
                 break
-        return CreateBoxesResult(maxColors, generatedColorCount)
+        return CreateBoxesResult(max_colors, generated_color_count)
 
-    def createResult(self, colorCount):
+    def create_result(self, color_count):
         colors = []
-        for i in range(colorCount):
+        for i in range(color_count):
             cube = self.cubes[i]
             weight = self.volume(cube, self.weights)
-            if (weight > 0):
-                r = round(self.volume(cube, self.momentsR) / weight)
-                g = round(self.volume(cube, self.momentsG) / weight)
-                b = round(self.volume(cube, self.momentsB) / weight)
+            if weight > 0:
+                r = round(self.volume(cube, self.moments_r) / weight)
+                g = round(self.volume(cube, self.moments_g) / weight)
+                b = round(self.volume(cube, self.moments_b) / weight)
                 color = (255 << 24) | ((r & 0x0ff) << 16) | ((g & 0x0ff) << 8) | (b & 0x0ff)
                 colors.append(color)
         return colors
 
     def variance(self, cube):
-        dr = self.volume(cube, self.momentsR)
-        dg = self.volume(cube, self.momentsG)
-        db = self.volume(cube, self.momentsB)
-        xx = self.moments[self.getIndex(cube.r1, cube.g1, cube.b1)] - self.moments[self.getIndex(cube.r1, cube.g1, cube.b0)] - self.moments[self.getIndex(cube.r1, cube.g0, cube.b1)] + self.moments[self.getIndex(cube.r1, cube.g0, cube.b0)] - self.moments[self.getIndex(cube.r0, cube.g1, cube.b1)] + self.moments[self.getIndex(cube.r0, cube.g1, cube.b0)] + self.moments[self.getIndex(cube.r0, cube.g0, cube.b1)] - self.moments[self.getIndex(cube.r0, cube.g0, cube.b0)]
+        dr = self.volume(cube, self.moments_r)
+        dg = self.volume(cube, self.moments_g)
+        db = self.volume(cube, self.moments_b)
+        xx = self.moments[self.get_index(cube.r1, cube.g1, cube.b1)] - self.moments[self.get_index(cube.r1, cube.g1, cube.b0)] - self.moments[self.get_index(cube.r1, cube.g0, cube.b1)] + self.moments[self.get_index(cube.r1, cube.g0, cube.b0)] - self.moments[self.get_index(cube.r0, cube.g1, cube.b1)] + self.moments[self.get_index(cube.r0, cube.g1, cube.b0)] + self.moments[self.get_index(cube.r0, cube.g0, cube.b1)] - self.moments[self.get_index(cube.r0, cube.g0, cube.b0)]
         hypotenuse = dr * dr + dg * dg + db * db
         volume = self.volume(cube, self.weights)
         return xx - hypotenuse / volume
 
     def cut(self, one, two):
-        wholeR = self.volume(one, self.momentsR)
-        wholeG = self.volume(one, self.momentsG)
-        wholeB = self.volume(one, self.momentsB)
-        wholeW = self.volume(one, self.weights)
-        maxRResult = self.maximize(one, directions["RED"], one.r0 + 1, one.r1, wholeR, wholeG, wholeB, wholeW)
-        maxGResult = self.maximize(one, directions["GREEN"], one.g0 + 1, one.g1, wholeR, wholeG, wholeB, wholeW)
-        maxBResult = self.maximize(one, directions["BLUE"], one.b0 + 1, one.b1, wholeR, wholeG, wholeB, wholeW)
-        direction = None
-        maxR = maxRResult.maximum
-        maxG = maxGResult.maximum
-        maxB = maxBResult.maximum
-        if (maxR >= maxG and maxR >= maxB):
-            if (maxRResult.cutLocation < 0):
+        whole_r = self.volume(one, self.moments_r)
+        whole_g = self.volume(one, self.moments_g)
+        whole_b = self.volume(one, self.moments_b)
+        whole_w = self.volume(one, self.weights)
+        max_r_result = self.maximize(one, directions["RED"], one.r0 + 1, one.r1, whole_r, whole_g, whole_b, whole_w)
+        max_g_result = self.maximize(one, directions["GREEN"], one.g0 + 1, one.g1, whole_r, whole_g, whole_b, whole_w)
+        max_b_result = self.maximize(one, directions["BLUE"], one.b0 + 1, one.b1, whole_r, whole_g, whole_b, whole_w)
+        max_r = max_r_result.maximum
+        max_g = max_g_result.maximum
+        max_b = max_b_result.maximum
+        if max_r >= max_g and max_r >= max_b:
+            if max_r_result.cut_location < 0:
                 return False
             direction = directions["RED"]
-        elif (maxG >= maxR and maxG >= maxB):
+        elif max_g >= max_r and max_g >= max_b:
             direction = directions["GREEN"]
         else:
             direction = directions["BLUE"]
@@ -170,18 +173,18 @@ class QuantizerWu:
         two.g1 = one.g1
         two.b1 = one.b1
 
-        if (direction == directions["RED"]):
-            one.r1 = maxRResult.cutLocation
+        if direction == directions["RED"]:
+            one.r1 = max_r_result.cut_location
             two.r0 = one.r1
             two.g0 = one.g0
             two.b0 = one.b0
-        elif (direction == directions["GREEN"]):
-            one.g1 = maxGResult.cutLocation
+        elif direction == directions["GREEN"]:
+            one.g1 = max_g_result.cut_location
             two.r0 = one.r0
             two.g0 = one.g1
             two.b0 = one.b0
-        elif (direction == directions["BLUE"]):
-            one.b1 = maxBResult.cutLocation
+        elif direction == directions["BLUE"]:
+            one.b1 = max_b_result.cut_location
             two.r0 = one.r0
             two.g0 = one.g0
             two.b0 = one.b1
@@ -192,65 +195,61 @@ class QuantizerWu:
         two.vol = (two.r1 - two.r0) * (two.g1 - two.g0) * (two.b1 - two.b0)
         return True
 
-    def maximize(self, cube, direction, first, last, wholeR, wholeG, wholeB, wholeW):
-        bottomR = self.bottom(cube, direction, self.momentsR)
-        bottomG = self.bottom(cube, direction, self.momentsG)
-        bottomB = self.bottom(cube, direction, self.momentsB)
-        bottomW = self.bottom(cube, direction, self.weights)
-        max = 0.0
+    def maximize(self, cube, direction, first, last, whole_r, whole_g, whole_b, whole_w):
+        bottom_r = self.bottom(cube, direction, self.moments_r)
+        bottom_g = self.bottom(cube, direction, self.moments_g)
+        bottom_b = self.bottom(cube, direction, self.moments_b)
+        bottom_w = self.bottom(cube, direction, self.weights)
+        maximized = 0.0
         cut = -1
-        halfR = 0
-        halfG = 0
-        halfB = 0
-        halfW = 0
         for i in range(first, last):
-            halfR = bottomR + self.top(cube, direction, i, self.momentsR)
-            halfG = bottomG + self.top(cube, direction, i, self.momentsG)
-            halfB = bottomB + self.top(cube, direction, i, self.momentsB)
-            halfW = bottomW + self.top(cube, direction, i, self.weights)
-            if (halfW == 0):
+            half_r = bottom_r + self.top(cube, direction, i, self.moments_r)
+            half_g = bottom_g + self.top(cube, direction, i, self.moments_g)
+            half_b = bottom_b + self.top(cube, direction, i, self.moments_b)
+            half_w = bottom_w + self.top(cube, direction, i, self.weights)
+            if half_w == 0:
                 continue
-            tempNumerator = (halfR * halfR + halfG * halfG + halfB * halfB) * 1.0
-            tempDenominator = halfW * 1.0
-            temp = tempNumerator / tempDenominator
-            halfR = wholeR - halfR
-            halfG = wholeG - halfG
-            halfB = wholeB - halfB
-            halfW = wholeW - halfW
-            if (halfW == 0):
+            temp_numerator = (half_r * half_r + half_g * half_g + half_b * half_b) * 1.0
+            temp_denominator = half_w * 1.0
+            temp = temp_numerator / temp_denominator
+            half_r = whole_r - half_r
+            half_g = whole_g - half_g
+            half_b = whole_b - half_b
+            half_w = whole_w - half_w
+            if half_w == 0:
                 continue
-            tempNumerator = (halfR * halfR + halfG * halfG + halfB * halfB) * 1.0
-            tempDenominator = halfW * 1.0
-            temp += tempNumerator / tempDenominator
-            if (temp > max):
-                max = temp
+            temp_numerator = (half_r * half_r + half_g * half_g + half_b * half_b) * 1.0
+            temp_denominator = half_w * 1.0
+            temp += temp_numerator / temp_denominator
+            if temp > maximized:
+                maximized = temp
                 cut = i
-        return MaximizeResult(cut, max)
+        return MaximizeResult(cut, maximized)
 
     def volume(self, cube, moment):
-        return (moment[self.getIndex(cube.r1, cube.g1, cube.b1)] - moment[self.getIndex(cube.r1, cube.g1, cube.b0)] - moment[self.getIndex(cube.r1, cube.g0, cube.b1)] + moment[self.getIndex(cube.r1, cube.g0, cube.b0)] - moment[self.getIndex(cube.r0, cube.g1, cube.b1)] + moment[self.getIndex(cube.r0, cube.g1, cube.b0)] + moment[self.getIndex(cube.r0, cube.g0, cube.b1)] - moment[self.getIndex(cube.r0, cube.g0, cube.b0)])
+        return moment[self.get_index(cube.r1, cube.g1, cube.b1)] - moment[self.get_index(cube.r1, cube.g1, cube.b0)] - moment[self.get_index(cube.r1, cube.g0, cube.b1)] + moment[self.get_index(cube.r1, cube.g0, cube.b0)] - moment[self.get_index(cube.r0, cube.g1, cube.b1)] + moment[self.get_index(cube.r0, cube.g1, cube.b0)] + moment[self.get_index(cube.r0, cube.g0, cube.b1)] - moment[self.get_index(cube.r0, cube.g0, cube.b0)]
 
     def bottom(self, cube, direction, moment):
-        if (direction == directions["RED"]):
-            return (-moment[self.getIndex(cube.r0, cube.g1, cube.b1)] + moment[self.getIndex(cube.r0, cube.g1, cube.b0)] + moment[self.getIndex(cube.r0, cube.g0, cube.b1)] - moment[self.getIndex(cube.r0, cube.g0, cube.b0)])
-        elif (direction == directions["GREEN"]):
-            return (-moment[self.getIndex(cube.r1, cube.g0, cube.b1)] + moment[self.getIndex(cube.r1, cube.g0, cube.b0)] + moment[self.getIndex(cube.r0, cube.g0, cube.b1)] - moment[self.getIndex(cube.r0, cube.g0, cube.b0)])
-        elif (direction == directions["BLUE"]):
-            return (-moment[self.getIndex(cube.r1, cube.g1, cube.b0)] + moment[self.getIndex(cube.r1, cube.g0, cube.b0)] + moment[self.getIndex(cube.r0, cube.g1, cube.b0)] - moment[self.getIndex(cube.r0, cube.g0, cube.b0)])
+        if direction == directions["RED"]:
+            return -moment[self.get_index(cube.r0, cube.g1, cube.b1)] + moment[self.get_index(cube.r0, cube.g1, cube.b0)] + moment[self.get_index(cube.r0, cube.g0, cube.b1)] - moment[self.get_index(cube.r0, cube.g0, cube.b0)]
+        elif direction == directions["GREEN"]:
+            return -moment[self.get_index(cube.r1, cube.g0, cube.b1)] + moment[self.get_index(cube.r1, cube.g0, cube.b0)] + moment[self.get_index(cube.r0, cube.g0, cube.b1)] - moment[self.get_index(cube.r0, cube.g0, cube.b0)]
+        elif direction == directions["BLUE"]:
+            return -moment[self.get_index(cube.r1, cube.g1, cube.b0)] + moment[self.get_index(cube.r1, cube.g0, cube.b0)] + moment[self.get_index(cube.r0, cube.g1, cube.b0)] - moment[self.get_index(cube.r0, cube.g0, cube.b0)]
         else:
             raise Exception('unexpected direction ' + direction)
 
     def top(self, cube, direction, position, moment):
-        if (direction == directions["RED"]):
-            return (moment[self.getIndex(position, cube.g1, cube.b1)] - moment[self.getIndex(position, cube.g1, cube.b0)] - moment[self.getIndex(position, cube.g0, cube.b1)] + moment[self.getIndex(position, cube.g0, cube.b0)])
-        elif (direction == directions["GREEN"]):
-            return (moment[self.getIndex(cube.r1, position, cube.b1)] - moment[self.getIndex(cube.r1, position, cube.b0)] - moment[self.getIndex(cube.r0, position, cube.b1)] + moment[self.getIndex(cube.r0, position, cube.b0)])
-        elif (direction == directions["BLUE"]):
-            return (moment[self.getIndex(cube.r1, cube.g1, position)] - moment[self.getIndex(cube.r1, cube.g0, position)] - moment[self.getIndex(cube.r0, cube.g1, position)] + moment[self.getIndex(cube.r0, cube.g0, position)])
+        if direction == directions["RED"]:
+            return moment[self.get_index(position, cube.g1, cube.b1)] - moment[self.get_index(position, cube.g1, cube.b0)] - moment[self.get_index(position, cube.g0, cube.b1)] + moment[self.get_index(position, cube.g0, cube.b0)]
+        elif direction == directions["GREEN"]:
+            return moment[self.get_index(cube.r1, position, cube.b1)] - moment[self.get_index(cube.r1, position, cube.b0)] - moment[self.get_index(cube.r0, position, cube.b1)] + moment[self.get_index(cube.r0, position, cube.b0)]
+        elif direction == directions["BLUE"]:
+            return moment[self.get_index(cube.r1, cube.g1, position)] - moment[self.get_index(cube.r1, cube.g0, position)] - moment[self.get_index(cube.r0, cube.g1, position)] + moment[self.get_index(cube.r0, cube.g0, position)]
         else:
             raise Exception('unexpected direction ' + direction)
 
-    def getIndex(self, r, g, b):
+    def get_index(self, r, g, b):
         return (r << (INDEX_BITS * 2)) + (r << (INDEX_BITS + 1)) + r + (g << INDEX_BITS) + g + b
 
 # /**
@@ -272,20 +271,20 @@ class Box:
 #  */
 class CreateBoxesResult:
     # /**
-    #  * @param requestedCount how many colors the caller asked to be returned from
+    #  * @param requested_count how many colors the caller asked to be returned from
     #  *     quantization.
-    #  * @param resultCount the actual number of colors achieved from quantization.
+    #  * @param result_count the actual number of colors achieved from quantization.
     #  *     May be lower than the requested count.
     #  */
-    def __init__(self, requestedCount, resultCount):
-        self.requestedCount = requestedCount
-        self.resultCount = resultCount
+    def __init__(self, requested_count, result_count):
+        self.requested_count = requested_count
+        self.result_count = result_count
 
 # /**
 #  * Represents the result of calculating where to cut an existing box in such
 #  * a way to maximize variance between the two new boxes created by a cut.
 #  */
 class MaximizeResult:
-    def __init__(self, cutLocation, maximum):
-        self.cutLocation = cutLocation
+    def __init__(self, cut_location, maximum):
+        self.cut_location = cut_location
         self.maximum = maximum

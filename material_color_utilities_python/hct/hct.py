@@ -13,10 +13,18 @@
 #  * calculate. A difference of 40 in HCT tone guarantees a contrast ratio >= 3.0,
 #  * and a difference of 50 guarantees a contrast ratio >= 4.5.
 #  */
-from ..utils.color_utils import *
-from ..utils.math_utils import *
-from ..hct.cam16 import *
-from ..hct.viewing_conditions import *
+from material_color_utilities_python.hct.cam16 import Cam16
+from material_color_utilities_python.hct.viewing_conditions import (
+    default_viewing_conditions,
+)
+from material_color_utilities_python.utils.color_utils import (
+    argb_from_lstar,
+    lstar_from_argb,
+)
+from material_color_utilities_python.utils.math_utils import (
+    clamp_double,
+    sanitize_degrees_double,
+)
 
 # /**
 #  * When the delta between the floor & ceiling of a binary search for maximum
@@ -39,6 +47,7 @@ DL_MAX = 0.2
 #  */
 LIGHTNESS_SEARCH_ENDPOINT = 0.01
 
+
 # /**
 #  * @param hue CAM16 hue
 #  * @param chroma CAM16 chroma
@@ -46,69 +55,72 @@ LIGHTNESS_SEARCH_ENDPOINT = 0.01
 #  * @return CAM16 instance within error tolerance of the provided dimensions,
 #  *     or null.
 #  */
-def findCamByJ(hue, chroma, tone):
+def find_cam_by_j(hue, chroma, tone):
     low = 0.0
     high = 100.0
-    mid = 0.0
-    bestdL = 1000.0
-    bestdE = 1000.0
-    bestCam = None
-    while (abs(low - high) > LIGHTNESS_SEARCH_ENDPOINT):
+    best_dist_l = 1000.0
+    best_dist_e = 1000.0
+    best_cam = None
+    while abs(low - high) > LIGHTNESS_SEARCH_ENDPOINT:
         mid = low + (high - low) / 2
-        camBeforeClip = Cam16.fromJch(mid, chroma, hue)
-        clipped = camBeforeClip.toInt()
-        clippedLstar = lstarFromArgb(clipped)
-        dL = abs(tone - clippedLstar)
-        if (dL < DL_MAX):
-            camClipped = Cam16.fromInt(clipped)
-            dE = camClipped.distance(Cam16.fromJch(camClipped.j, camClipped.chroma, hue))
-            if (dE <= DE_MAX and dE <= bestdE):
-                bestdL = dL
-                bestdE = dE
-                bestCam = camClipped
-        if (bestdL == 0 and bestdE == 0):
+        cam_before_clip = Cam16.from_jch(mid, chroma, hue)
+        clipped = cam_before_clip.to_int()  # noqa: F821
+        clipped_lstar = lstar_from_argb(clipped)
+        dist_l = abs(tone - clipped_lstar)
+        if dist_l < DL_MAX:
+            cam_clipped = Cam16.from_int(clipped)
+            d_e = cam_clipped.distance(
+                Cam16.from_jch(cam_clipped.j, cam_clipped.chroma, hue)
+            )
+            if d_e <= DE_MAX and d_e <= best_dist_e:
+                best_dist_l = dist_l
+                best_dist_e = d_e
+                best_cam = cam_clipped
+        if best_dist_l == 0 and best_dist_e == 0:
             break
-        if (clippedLstar < tone):
+        if clipped_lstar < tone:
             low = mid
         else:
             high = mid
-    return bestCam
+    return best_cam
+
 
 # /**
 #  * @param hue CAM16 hue.
 #  * @param chroma CAM16 chroma.
 #  * @param tone L*a*b* lightness.
-#  * @param viewingConditions Information about the environment where the color
+#  * @param viewing_conditions Information about the environment where the color
 #  *     was observed.
 #  */
-def getIntInViewingConditions(hue, chroma, tone, viewingConditions):
-    if (chroma < 1.0 or round(tone) <= 0.0 or round(tone) >= 100.0):
-        return argbFromLstar(tone)
+def get_int_in_viewing_conditions(hue, chroma, tone, viewing_conditions):
+    if chroma < 1.0 or round(tone) <= 0.0 or round(tone) >= 100.0:
+        return argb_from_lstar(tone)
 
-    hue = sanitizeDegreesDouble(hue)
+    hue = sanitize_degrees_double(hue)
     high = chroma
     mid = chroma
     low = 0.0
-    isFirstLoop = True
+    is_first_loop = True
     answer = None
-    while (abs(low - high) >= CHROMA_SEARCH_ENDPOINT):
-        possibleAnswer = findCamByJ(hue, mid, tone)
-        if (isFirstLoop):
-            if (possibleAnswer != None):
-                return possibleAnswer.viewed(viewingConditions)
+    while abs(low - high) >= CHROMA_SEARCH_ENDPOINT:
+        possible_answer = find_cam_by_j(hue, mid, tone)
+        if is_first_loop:
+            if possible_answer is not None:
+                return possible_answer.viewed(viewing_conditions)
             else:
-                isFirstLoop = False
+                is_first_loop = False
                 mid = low + (high - low) / 2.0
                 continue
-        if (possibleAnswer == None):
+        if possible_answer is None:
             high = mid
         else:
-            answer = possibleAnswer
+            answer = possible_answer
             low = mid
         mid = low + (high - low) / 2.0
-    if (answer == None):
-        return argbFromLstar(tone)
-    return answer.viewed(viewingConditions)
+    if answer is None:
+        return argb_from_lstar(tone)
+    return answer.viewed(viewing_conditions)
+
 
 # /**
 #  * @param hue a number, in degrees, representing ex. red, orange, yellow, etc.
@@ -120,8 +132,14 @@ def getIntInViewingConditions(hue, chroma, tone, viewingConditions):
 #  * @param tone Lightness. Ranges from 0 to 100.
 #  * @return ARGB representation of a color in default viewing conditions
 #  */
-def getInt(hue, chroma, tone):
-    return getIntInViewingConditions(sanitizeDegreesDouble(hue), chroma, clampDouble(0.0, 100.0, tone), ViewingConditions.DEFAULT)
+def get_int(hue, chroma, tone):
+    return get_int_in_viewing_conditions(
+        sanitize_degrees_double(hue),
+        chroma,
+        clamp_double(0.0, 100.0, tone),
+        default_viewing_conditions,
+    )
+
 
 # /**
 #  * HCT, hue, chroma, and tone. A color system that provides a perceptually
@@ -129,11 +147,11 @@ def getInt(hue, chroma, tone):
 #  * will appear as in different lighting environments.
 #  */
 class Hct:
-    def __init__(self, internalHue, internalChroma, internalTone):
-        self.internalHue = internalHue
-        self.internalChroma = internalChroma
-        self.internalTone = internalTone
-        self.setInternalState(self.toInt())
+    def __init__(self, internal_hue, internal_chroma, internal_tone):
+        self.internal_hue = internal_hue
+        self.internal_chroma = internal_chroma
+        self.internal_tone = internal_tone
+        self.set_internal_state(self.to_int())
 
     # /**
     #  * @param hue 0 <= hue < 360; invalid values are corrected.
@@ -145,7 +163,7 @@ class Hct:
     #  */
     # Function renamed from "from" to "fromHct", from is reserved in Python
     @staticmethod
-    def fromHct(hue, chroma, tone):
+    def from_hct(hue, chroma, tone):
         return Hct(hue, chroma, tone)
 
     # /**
@@ -153,58 +171,68 @@ class Hct:
     #  * @return HCT representation of a color in default viewing conditions
     #  */
     @staticmethod
-    def fromInt(argb):
-        cam = Cam16.fromInt(argb)
-        tone = lstarFromArgb(argb)
+    def from_int(argb):
+        cam = Cam16.from_int(argb)
+        tone = lstar_from_argb(argb)
         return Hct(cam.hue, cam.chroma, tone)
 
-    def toInt(self):
-        return getInt(self.internalHue, self.internalChroma, self.internalTone)
+    def to_int(self):
+        return get_int(self.internal_hue, self.internal_chroma, self.internal_tone)
 
     # /**
     #  * A number, in degrees, representing ex. red, orange, yellow, etc.
     #  * Ranges from 0 <= hue < 360.
     #  */
     def get_hue(self):
-        return self.internalHue
+        return self.internal_hue
 
     # /**
     #  * @param newHue 0 <= newHue < 360; invalid values are corrected.
     #  * Chroma may decrease because chroma has a different maximum for any given
     #  * hue and tone.
     #  */
-    def set_hue(self, newHue):
-        self.setInternalState(getInt(sanitizeDegreesDouble(newHue), self.internalChroma, self.internalTone))
+    def set_hue(self, new_hue):
+        self.set_internal_state(
+            get_int(
+                sanitize_degrees_double(new_hue),
+                self.internal_chroma,
+                self.internal_tone,
+            )
+        )
 
     def get_chroma(self):
-        return self.internalChroma
+        return self.internal_chroma
 
     # /**
     #  * @param newChroma 0 <= newChroma < ?
     #  * Chroma may decrease because chroma has a different maximum for any given
     #  * hue and tone.
     #  */
-    def set_chroma(self, newChroma):
-        self.setInternalState(getInt(self.internalHue, newChroma, self.internalTone))
+    def set_chroma(self, new_chroma):
+        self.set_internal_state(
+            get_int(self.internal_hue, new_chroma, self.internal_tone)
+        )
 
     # /** Lightness. Ranges from 0 to 100. */
     def get_tone(self):
-        return self.internalTone
+        return self.internal_tone
 
     # /**
     #  * @param newTone 0 <= newTone <= 100; invalid valids are corrected.
     #  * Chroma may decrease because chroma has a different maximum for any given
     #  * hue and tone.
     #  */
-    def set_tone(self, newTone):
-        self.setInternalState(getInt(self.internalHue, self.internalChroma, newTone))
+    def set_tone(self, new_tone):
+        self.set_internal_state(
+            get_int(self.internal_hue, self.internal_chroma, new_tone)
+        )
 
-    def setInternalState(self, argb):
-        cam = Cam16.fromInt(argb)
-        tone = lstarFromArgb(argb)
-        self.internalHue = cam.hue
-        self.internalChroma = cam.chroma
-        self.internalTone = tone
+    def set_internal_state(self, argb):
+        cam = Cam16.from_int(argb)
+        tone = lstar_from_argb(argb)
+        self.internal_hue = cam.hue
+        self.internal_chroma = cam.chroma
+        self.internal_tone = tone
 
     # Adding properties for getters and setters
     hue = property(get_hue, set_hue)

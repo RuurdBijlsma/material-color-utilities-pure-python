@@ -1,8 +1,3 @@
-from ..hct.cam16 import *
-from ..hct.hct import *
-from ..utils.color_utils import *
-from ..utils.math_utils import *
-
 # // libmonet is designed to have a consistent API across platforms
 # // and modular components that can be moved around easily. Using a class as a
 # // namespace facilitates this.
@@ -11,6 +6,15 @@ from ..utils.math_utils import *
 # /**
 #  * Functions for blending in HCT and CAM16.
 #  */
+from material_color_utilities_python.hct.cam16 import Cam16
+from material_color_utilities_python.hct.hct import Hct
+from material_color_utilities_python.utils.color_utils import lstar_from_argb
+from material_color_utilities_python.utils.math_utils import (
+    difference_degrees,
+    sanitize_degrees_double,
+)
+
+
 class Blend:
     # /**
     #  * Blend the design color's HCT hue towards the key color's HCT
@@ -25,13 +29,16 @@ class Blend:
     #  */
     # Changed var differenceDegrees to differenceDegrees_v to avoid overwrite
     @staticmethod
-    def harmonize(designColor, sourceColor):
-        fromHct = Hct.fromInt(designColor)
-        toHct = Hct.fromInt(sourceColor)
-        differenceDegrees_v = differenceDegrees(fromHct.hue, toHct.hue)
-        rotationDegrees = min(differenceDegrees_v * 0.5, 15.0)
-        outputHue = sanitizeDegreesDouble(fromHct.hue + rotationDegrees * Blend.rotationDirection(fromHct.hue, toHct.hue))
-        return Hct.fromHct(outputHue, fromHct.chroma, fromHct.tone).toInt()
+    def harmonize(design_color, source_color):
+        from_hct = Hct.from_int(design_color)
+        to_hct = Hct.from_int(source_color)
+        difference_degrees_v = difference_degrees(from_hct.hue, to_hct.hue)
+        rotation_degrees = min(difference_degrees_v * 0.5, 15.0)
+        output_hue = sanitize_degrees_double(
+            from_hct.hue
+            + rotation_degrees * Blend.rotation_direction(from_hct.hue, to_hct.hue)
+        )
+        return Hct.from_hct(output_hue, from_hct.chroma, from_hct.tone).to_int()
 
     # /**
     #  * Blends hue from one color into another. The chroma and tone of
@@ -46,11 +53,11 @@ class Blend:
     # Changed "from" arg to "from_v", from is reserved in Python
     @staticmethod
     def hctHue(from_v, to, amount):
-        ucs = Blend.cam16Ucs(from_v, to, amount)
-        ucsCam = Cam16.fromInt(ucs)
-        fromCam = Cam16.fromInt(from_v)
-        blended = Hct.fromHct(ucsCam.hue, fromCam.chroma, lstarFromArgb(from_v))
-        return blended.toInt()
+        ucs = Blend.cam16_ucs(from_v, to, amount)
+        ucs_cam = Cam16.from_int(ucs)
+        from_cam = Cam16.from_int(from_v)
+        blended = Hct.from_hct(ucs_cam.hue, from_cam.chroma, lstar_from_argb(from_v))
+        return blended.to_int()
 
     # /**
     #  * Blend in CAM16-UCS space.
@@ -63,19 +70,19 @@ class Blend:
     #  */
     # Changed "from" arg to "from_v", from is reserved in Python
     @staticmethod
-    def cam16Ucs(from_v, to, amount):
-        fromCam = Cam16.fromInt(from_v)
-        toCam = Cam16.fromInt(to)
-        fromJ = fromCam.jstar
-        fromA = fromCam.astar
-        fromB = fromCam.bstar
-        toJ = toCam.jstar
-        toA = toCam.astar
-        toB = toCam.bstar
-        jstar = fromJ + (toJ - fromJ) * amount
-        astar = fromA + (toA - fromA) * amount
-        bstar = fromB + (toB - fromB) * amount
-        return Cam16.fromUcs(jstar, astar, bstar).toInt()
+    def cam16_ucs(from_v, to, amount):
+        from_cam = Cam16.from_int(from_v)
+        to_cam = Cam16.from_int(to)
+        from_j = from_cam.j_star
+        from_a = from_cam.a_star
+        from_b = from_cam.b_star
+        to_j = to_cam.j_star
+        to_a = to_cam.a_star
+        to_b = to_cam.b_star
+        j_star = from_j + (to_j - from_j) * amount
+        a_star = from_a + (to_a - from_a) * amount
+        b_star = from_b + (to_b - from_b) * amount
+        return Cam16.from_ucs(j_star, a_star, b_star).to_int()
 
     # /**
     #  * Sign of direction change needed to travel from one angle to
@@ -89,16 +96,16 @@ class Blend:
     #  */
     # Changed "from" arg to "from_v", from is reserved in Python
     @staticmethod
-    def rotationDirection(from_v, to):
+    def rotation_direction(from_v, to):
         a = to - from_v
         b = to - from_v + 360.0
         c = to - from_v - 360.0
-        aAbs = abs(a)
-        bAbs = abs(b)
-        cAbs = abs(c)
-        if (aAbs <= bAbs and aAbs <= cAbs):
+        a_abs = abs(a)
+        b_abs = abs(b)
+        c_abs = abs(c)
+        if a_abs <= b_abs and a_abs <= c_abs:
             return 1.0 if a >= 0.0 else -1.0
-        elif (bAbs <= aAbs and bAbs <= cAbs):
+        elif b_abs <= a_abs and b_abs <= c_abs:
             return 1.0 if b >= 0.0 else -1.0
         else:
             return 1.0 if c >= 0.0 else -1.0

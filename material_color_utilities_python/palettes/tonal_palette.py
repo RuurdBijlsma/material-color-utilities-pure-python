@@ -1,5 +1,7 @@
-from ..hct.hct import *
 from collections import OrderedDict
+
+from material_color_utilities_python.hct.hct import Hct
+
 
 # /**
 #  *  A convenience class for retrieving colors that are constant in hue and
@@ -17,9 +19,9 @@ class TonalPalette:
     #  * @return Tones matching that color's hue and chroma.
     #  */
     @staticmethod
-    def fromInt(argb):
-        hct = Hct.fromInt(argb)
-        return TonalPalette.fromHueAndChroma(hct.hue, hct.chroma)
+    def from_int(argb):
+        hct = Hct.from_int(argb)
+        return TonalPalette.from_hue_and_chroma(hct.hue, hct.chroma)
 
     # /**
     #  * @param hue HCT hue
@@ -27,7 +29,7 @@ class TonalPalette:
     #  * @return Tones matching hue and chroma.
     #  */
     @staticmethod
-    def fromHueAndChroma(hue, chroma):
+    def from_hue_and_chroma(hue, chroma):
         return TonalPalette(hue, chroma)
 
     # /**
@@ -35,9 +37,8 @@ class TonalPalette:
     #  * @return ARGB representation of a color with that tone.
     #  */
     def tone(self, tone):
-        argb = None
-        if (tone not in self.cache.keys()):
-            argb = Hct.fromHct(self.hue, self.chroma, tone).toInt()
+        if tone not in self.cache.keys():
+            argb = Hct.from_hct(self.hue, self.chroma, tone).to_int()
             self.cache[tone] = argb
         else:
             argb = self.cache[tone]

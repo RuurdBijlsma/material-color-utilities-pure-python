@@ -1,5 +1,6 @@
-from ..quantize.quantizer_wsmeans import *
-from ..quantize.quantizer_wu import *
+from material_color_utilities_python.quantize.quantizer_wsmeans import QuantizerWsMeans
+from material_color_utilities_python.quantize.quantizer_wu import QuantizerWu
+
 
 # /**
 #  * An image quantizer that improves on the quality of a standard K-Means
@@ -27,7 +28,7 @@ class QuantizerCelebi:
     #  *     quantized image.
     #  */
     @staticmethod
-    def quantize(pixels, maxColors):
+    def quantize(pixels, max_colors):
         wu = QuantizerWu()
-        wuResult = wu.quantize(pixels, maxColors)
-        return QuantizerWsmeans.quantize(pixels, wuResult, maxColors)
+        wu_result = wu.quantize(pixels, max_colors)
+        return QuantizerWsMeans.quantize(pixels, wu_result, max_colors)

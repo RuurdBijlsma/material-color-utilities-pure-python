@@ -1,5 +1,6 @@
-from .math_utils import *
 import math
+
+from material_color_utilities_python.utils.math_utils import clamp_int, matrix_multiply
 
 # /**
 #  * Color science utilities.
@@ -32,90 +33,104 @@ XYZ_TO_SRGB = [
 
 WHITE_POINT_D65 = [95.047, 100.0, 108.883]
 
+
 # /**
 #  * Converts a color from RGB components to ARGB format.
 #  */
-def rshift(val, n): return val>>n if val >= 0 else (val+0x100000000)>>n
-def argbFromRgb(red, green, blue):
+def rshift(val, n):
+    return val >> n if val >= 0 else (val + 0x100000000) >> n
+
+
+def argb_from_rgb(red, green, blue):
     return rshift((255 << 24 | (red & 255) << 16 | (green & 255) << 8 | blue & 255), 0)
+
 
 # /**
 #  * Returns the alpha component of a color in ARGB format.
 #  */
-def alphaFromArgb(argb):
+def alpha_from_argb(argb):
     return argb >> 24 & 255
+
 
 # /**
 #  * Returns the red component of a color in ARGB format.
 #  */
-def redFromArgb(argb):
+def red_from_argb(argb):
     return argb >> 16 & 255
+
 
 # /**
 #  * Returns the green component of a color in ARGB format.
 #  */
-def greenFromArgb(argb):
+def green_from_argb(argb):
     return argb >> 8 & 255
+
 
 # /**
 #  * Returns the blue component of a color in ARGB format.
 #  */
-def blueFromArgb(argb):
+def blue_from_argb(argb):
     return argb & 255
+
 
 # /**
 #  * Returns whether a color in ARGB format is opaque.
 #  */
-def isOpaque(argb):
-    return alphaFromArgb(argb) >= 255
+def is_opaque(argb):
+    return alpha_from_argb(argb) >= 255
+
 
 # /**
 #  * Converts a color from ARGB to XYZ.
 #  */
-def argbFromXyz(x, y, z):
+def argb_from_xyz(x, y, z):
     matrix = XYZ_TO_SRGB
-    linearR = matrix[0][0] * x + matrix[0][1] * y + matrix[0][2] * z
-    linearG = matrix[1][0] * x + matrix[1][1] * y + matrix[1][2] * z
-    linearB = matrix[2][0] * x + matrix[2][1] * y + matrix[2][2] * z
-    r = delinearized(linearR)
-    g = delinearized(linearG)
-    b = delinearized(linearB)
-    return argbFromRgb(r, g, b)
+    linear_r = matrix[0][0] * x + matrix[0][1] * y + matrix[0][2] * z
+    linear_g = matrix[1][0] * x + matrix[1][1] * y + matrix[1][2] * z
+    linear_b = matrix[2][0] * x + matrix[2][1] * y + matrix[2][2] * z
+    r = delinearized(linear_r)
+    g = delinearized(linear_g)
+    b = delinearized(linear_b)
+    return argb_from_rgb(r, g, b)
+
 
 # /**
 #  * Converts a color from XYZ to ARGB.
 #  */
-def xyzFromArgb(argb):
-    r = linearized(redFromArgb(argb))
-    g = linearized(greenFromArgb(argb))
-    b = linearized(blueFromArgb(argb))
-    return matrixMultiply([r, g, b], SRGB_TO_XYZ)
+def xyz_from_argb(argb):
+    r = linearized(red_from_argb(argb))
+    g = linearized(green_from_argb(argb))
+    b = linearized(blue_from_argb(argb))
+    return matrix_multiply([r, g, b], SRGB_TO_XYZ)
+
 
 # /**
 #  * Converts a color represented in Lab color space into an ARGB
 #  * integer.
 #  */
-def labInvf(ft):
+def lab_inv_f(ft):
     e = 216.0 / 24389.0
     kappa = 24389.0 / 27.0
     ft3 = ft * ft * ft
-    if (ft3 > e):
+    if ft3 > e:
         return ft3
     else:
         return (116 * ft - 16) / kappa
 
-def argbFromLab(l, a, b):
-    whitePoint = WHITE_POINT_D65
-    fy = (l + 16.0) / 116.0
+
+def argb_from_lab(lightness, a, b):
+    white_point = WHITE_POINT_D65
+    fy = (lightness + 16.0) / 116.0
     fx = a / 500.0 + fy
     fz = fy - b / 200.0
-    xNormalized = labInvf(fx)
-    yNormalized = labInvf(fy)
-    zNormalized = labInvf(fz)
-    x = xNormalized * whitePoint[0]
-    y = yNormalized * whitePoint[1]
-    z = zNormalized * whitePoint[2]
-    return argbFromXyz(x, y, z)
+    x_normalized = lab_inv_f(fx)
+    y_normalized = lab_inv_f(fy)
+    z_normalized = lab_inv_f(fz)
+    x = x_normalized * white_point[0]
+    y = y_normalized * white_point[1]
+    z = z_normalized * white_point[2]
+    return argb_from_xyz(x, y, z)
+
 
 # /**
 #  * Converts a color from ARGB representation to L*a*b*
@@ -124,33 +139,35 @@ def argbFromLab(l, a, b):
 #  * @param argb the ARGB representation of a color
 #  * @return a Lab object representing the color
 #  */
-def labF(t):
+def lab_f(t):
     e = 216.0 / 24389.0
     kappa = 24389.0 / 27.0
-    if (t > e):
+    if t > e:
         return math.pow(t, 1.0 / 3.0)
     else:
         return (kappa * t + 16) / 116
 
-def labFromArgb(argb):
-    linearR = linearized(redFromArgb(argb))
-    linearG = linearized(greenFromArgb(argb))
-    linearB = linearized(blueFromArgb(argb))
+
+def lab_from_argb(argb):
+    linear_r = linearized(red_from_argb(argb))
+    linear_g = linearized(green_from_argb(argb))
+    linear_b = linearized(blue_from_argb(argb))
     matrix = SRGB_TO_XYZ
-    x = matrix[0][0] * linearR + matrix[0][1] * linearG + matrix[0][2] * linearB
-    y = matrix[1][0] * linearR + matrix[1][1] * linearG + matrix[1][2] * linearB
-    z = matrix[2][0] * linearR + matrix[2][1] * linearG + matrix[2][2] * linearB
-    whitePoint = WHITE_POINT_D65
-    xNormalized = x / whitePoint[0]
-    yNormalized = y / whitePoint[1]
-    zNormalized = z / whitePoint[2]
-    fx = labF(xNormalized)
-    fy = labF(yNormalized)
-    fz = labF(zNormalized)
-    l = 116.0 * fy - 16
+    x = matrix[0][0] * linear_r + matrix[0][1] * linear_g + matrix[0][2] * linear_b
+    y = matrix[1][0] * linear_r + matrix[1][1] * linear_g + matrix[1][2] * linear_b
+    z = matrix[2][0] * linear_r + matrix[2][1] * linear_g + matrix[2][2] * linear_b
+    white_point = WHITE_POINT_D65
+    x_normalized = x / white_point[0]
+    y_normalized = y / white_point[1]
+    z_normalized = z / white_point[2]
+    fx = lab_f(x_normalized)
+    fy = lab_f(y_normalized)
+    fz = lab_f(z_normalized)
+    lightness = 116.0 * fy - 16
     a = 500.0 * (fx - fy)
     b = 200.0 * (fy - fz)
-    return [l, a, b]
+    return [lightness, a, b]
+
 
 # /**
 #  * Converts an L* value to an ARGB representation.
@@ -159,19 +176,20 @@ def labFromArgb(argb):
 #  * @return ARGB representation of grayscale color with lightness
 #  * matching L*
 #  */
-def argbFromLstar(lstar):
+def argb_from_lstar(lstar):
     fy = (lstar + 16.0) / 116.0
     fz = fy
     fx = fy
     kappa = 24389.0 / 27.0
     epsilon = 216.0 / 24389.0
-    lExceedsEpsilonKappa = lstar > 8.0
-    y = fy * fy * fy if lExceedsEpsilonKappa else lstar / kappa
-    cubeExceedEpsilon = fy * fy * fy > epsilon
-    x = fx * fx * fx if cubeExceedEpsilon else lstar / kappa
-    z = fz * fz * fz if cubeExceedEpsilon else lstar / kappa
-    whitePoint = WHITE_POINT_D65
-    return argbFromXyz(x * whitePoint[0], y * whitePoint[1], z * whitePoint[2])
+    l_exceeds_epsilon_kappa = lstar > 8.0
+    y = fy * fy * fy if l_exceeds_epsilon_kappa else lstar / kappa
+    cube_exceed_epsilon = fy * fy * fy > epsilon
+    x = fx * fx * fx if cube_exceed_epsilon else lstar / kappa
+    z = fz * fz * fz if cube_exceed_epsilon else lstar / kappa
+    white_point = WHITE_POINT_D65
+    return argb_from_xyz(x * white_point[0], y * white_point[1], z * white_point[2])
+
 
 # /**
 #  * Computes the L* value of a color in ARGB representation.
@@ -179,14 +197,15 @@ def argbFromLstar(lstar):
 #  * @param argb ARGB representation of a color
 #  * @return L*, from L*a*b*, coordinate of the color
 #  */
-def lstarFromArgb(argb):
-    y = xyzFromArgb(argb)[1] / 100.0
+def lstar_from_argb(argb):
+    y = xyz_from_argb(argb)[1] / 100.0
     e = 216.0 / 24389.0
-    if (y <= e):
+    if y <= e:
         return 24389.0 / 27.0 * y
     else:
-        yIntermediate = math.pow(y, 1.0 / 3.0)
-        return 116.0 * yIntermediate - 16.0
+        y_intermediate = math.pow(y, 1.0 / 3.0)
+        return 116.0 * y_intermediate - 16.0
+
 
 # /**
 #  * Converts an L* value to a Y value.
@@ -199,12 +218,13 @@ def lstarFromArgb(argb):
 #  * @param lstar L* in L*a*b*
 #  * @return Y in XYZ
 #  */
-def yFromLstar(lstar):
+def y_from_lstar(lstar):
     ke = 8.0
-    if (lstar > ke):
+    if lstar > ke:
         return math.pow((lstar + 16.0) / 116.0, 3.0) * 100.0
     else:
         return lstar / (24389.0 / 27.0) * 100.0
+
 
 # /**
 #  * Linearizes an RGB component.
@@ -214,13 +234,13 @@ def yFromLstar(lstar):
 #  * @return 0.0 <= output <= 100.0, color channel converted to
 #  * linear RGB space
 #  */
-def linearized(rgbComponent):
-    normalized = rgbComponent / 255.0
-    if (normalized <= 0.040449936):
+def linearized(rgb_component):
+    normalized = rgb_component / 255.0
+    if normalized <= 0.040449936:
         return normalized / 12.92 * 100.0
     else:
         return math.pow((normalized + 0.055) / 1.055, 2.4) * 100.0
-    
+
 
 # /**
 #  * Delinearizes an RGB component.
@@ -230,23 +250,19 @@ def linearized(rgbComponent):
 #  * @return 0 <= output <= 255, color channel converted to regular
 #  * RGB space
 #  */
-def delinearized(rgbComponent):
-    normalized = rgbComponent / 100.0
-    delinearized = 0.0
-    if (normalized <= 0.0031308):
-        delinearized = normalized * 12.92
+def delinearized(rgb_component):
+    normalized = rgb_component / 100.0
+    if normalized <= 0.0031308:
+        delinearized_value = normalized * 12.92
     else:
-        delinearized = 1.055 * math.pow(normalized, 1.0 / 2.4) - 0.055
-    return clampInt(0, 255, round(delinearized * 255.0))
+        delinearized_value = 1.055 * math.pow(normalized, 1.0 / 2.4) - 0.055
+    return clamp_int(0, 255, round(delinearized_value * 255.0))
+
 
 # /**
 #  * Returns the standard white point white on a sunny day.
 #  *
 #  * @return The white point
 #  */
-def whitePointD65():
+def white_point_d65():
     return WHITE_POINT_D65
-
-
-
-
